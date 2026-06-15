@@ -1,6 +1,5 @@
 "use client";
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-
+const BASE = process.env.NEXT_PUBLIC_API_URL || "https://rastreio-backend-t0xu.onrender.com";
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("rp_token");
