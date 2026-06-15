@@ -26,7 +26,7 @@ export default function CadastroRapido() {
         nome: r.nome || "", documento: r.documento || "", numero: r.numero || "",
         produto: r.produto || "", valor: r.valor ?? "", email: r.email || "",
         whatsapp: r.whatsapp || "", notif_email: !!r.email, notif_whats: !!r.whatsapp,
-        observacoes: "", extras: r.extras || {},
+        observacoes: r.observacoes || "", extras: r.extras || {},
       });
     } catch (e: any) { setErro(e.message); }
   }
