@@ -1,0 +1,54 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: rp_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-rastreio}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-rastreio_pass}
+      POSTGRES_DB: ${DB_NAME:-rastreio}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-rastreio}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  backend:
+    build: ./backend
+    container_name: rp_backend
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgres://${DB_USER:-rastreio}:${DB_PASSWORD:-rastreio_pass}@db:5432/${DB_NAME:-rastreio}
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo-em-producao}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@empresa.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@123}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@empresa.com}
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
+      WHATSAPP_PHONE_ID: ${WHATSAPP_PHONE_ID:-}
+      NOTIFICATIONS_MODE: ${NOTIFICATIONS_MODE:-mock}
+    ports: ["4000:4000"]
+    command: sh -c "node dist/db/seed.js && node dist/index.js"
+  frontend:
+    build: ./frontend
+    container_name: rp_frontend
+    restart: unless-stopped
+    depends_on: [backend]
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    ports: ["3000:3000"]
+volumes:
+  db_data:
