@@ -33,6 +33,7 @@ async function req<T = any>(path: string, opts: RequestInit = {}): Promise<T> {
 
 export const api = {
   base: BASE,
+  configuracoes: () => req("/api/admin/configuracoes"),
   consulta: (documento: string) => req("/api/public/consulta", { method: "POST", body: JSON.stringify({ documento }) }),
   rastreio: (codigo: string) => req(`/api/public/rastreio/${codigo}`),
   validarQr: (codigo: string) => req(`/api/public/qr/${codigo}`),
