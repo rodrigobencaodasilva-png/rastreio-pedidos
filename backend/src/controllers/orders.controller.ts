@@ -19,7 +19,7 @@ export async function previewFicha(req: AuthRequest, res: Response) {
 const pedidoSchema = z.object({
   nome: z.string().min(2),
   documento: z.string().min(11),
-  numero: z.string().min(1),
+  numero: z.string().optional(),
   produto: z.string().optional(),
   valor: z.number().nonnegative().optional(),
   email: z.string().email().optional().or(z.literal("")),
@@ -50,6 +50,7 @@ async function upsertCliente(c: any) {
 
 export async function criarPedido(req: AuthRequest, res: Response) {
   const data = pedidoSchema.parse(req.body);
+  const numero = (data.numero && data.numero.trim()) ? data.numero.trim() : ("PED-" + Date.now().toString().slice(-8));
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -57,16 +58,16 @@ export async function criarPedido(req: AuthRequest, res: Response) {
     const ped = await client.query(
       `INSERT INTO pedidos (numero, cliente_id, produto, valor, status, observacoes, info_adicional)
        VALUES ($1,$2,$3,$4,'pedido_recebido',$5,$6) RETURNING id`,
-      [data.numero, clienteId, data.produto || null, data.valor ?? null,
+      [numero, clienteId, data.produto || null, data.valor ?? null,
        data.observacoes || null, JSON.stringify(data.info_adicional ?? {})]);
     const pedidoId = ped.rows[0].id;
     await client.query(
       `INSERT INTO historico_status (pedido_id, status, descricao, admin_id)
        VALUES ($1,'pedido_recebido','Pedido cadastrado no sistema',$2)`, [pedidoId, req.admin!.id]);
-    const codigo = gerarCodigoUnico(data.numero);
+    const codigo = gerarCodigoUnico(numero);
     await client.query(`INSERT INTO qrcodes (pedido_id, codigo) VALUES ($1,$2)`, [pedidoId, codigo]);
     await client.query("COMMIT");
-    await registrarLog(req, "criar_pedido", "pedido", pedidoId, { numero: data.numero });
+    await registrarLog(req, "criar_pedido", "pedido", pedidoId, { numero });
     res.status(201).json({ pedido: await detalharPedido("p.id=$1", pedidoId) });
   } catch (e) {
     await client.query("ROLLBACK");
